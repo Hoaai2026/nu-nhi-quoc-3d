@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tây Du – Nữ Nhi Quốc 3D</title>
+<style>
+body{margin:0;overflow:hidden;background:#18332e;color:white;font:16px Arial}
+canvas{display:block;touch-action:none}
+#hud{position:absolute;top:12px;left:12px;background:#18332edd;padding:14px;border-radius:12px;max-width:85%}
+#move{position:absolute;bottom:20px;left:15px;display:grid;grid-template-columns:repeat(3,52px);gap:5px}
+#actions{position:absolute;bottom:20px;right:15px;display:grid;gap:6px}
+button{padding:14px;background:#25443e;color:white;border:1px solid gold;border-radius:10px;touch-action:none}
+</style>
+</head>
+<body>
+<div id="hud">
+<b>TÂY DU – NỮ NHI QUỐC 3D</b>
+<div id="stats"></div>
+<div id="quest"></div>
+<div id="message">Đang tải game...</div>
+</div>
+<div id="move">
+<span></span><button data-key="w">↑</button><span></span>
+<button data-key="a">←</button>
+<button data-key="s">↓</button>
+<button data-key="d">→</button>
+</div>
+<div id="actions">
+<button id="talk">Tương tác</button>
+<button id="attack">Đánh</button>
+<button id="fly">Cân đẩu vân</button>
+<button id="night">Ngày / đêm</button>
+</div>
+<script type="module">
+import * as T from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+const scene=new T.Scene();
+scene.background=new T.Color(0x9ccbd8);
+scene.fog=new T.FogExp2(0x9ccbd8,0.012);
+
+const camera=new T.PerspectiveCamera(55,innerWidth/innerHeight,0.1,180);
+const renderer=new T.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+document.body.prepend(renderer.domElement);
+
+const light=new T.HemisphereLight(0xfff2ce,0x557052,2.2);
+scene.add(light);
+const sun=new T.DirectionalLight(0xffe1ae,2.5);
+sun.position.set(20,35,15);
+scene.add(sun);
+
+function mesh(geometry,color,x,y,z,parent=scene){
+const m=new T.Mesh(geometry,new T.MeshStandardMaterial({color}));
+m.position.set(x,y,z);
+parent.add(m);
+return m;
+}
+
+function box(x,y,z,w,h,d,c,p=scene){
+return mesh(new T.BoxGeometry(w,h,d),c,x,y,z,p);
+}
+
+function ball(x,y,z,r,c,p=scene){
+return mesh(new T.SphereGeometry(r,12,8),c,x,y,z,p);
+}
+
+box(0,-0.3,0,100,0.5,100,0x72966a);
+box(0,0.01,0,7,0.08,94,0xcdbb96);
+box(0,0.02,0,80,0.07,5,0xcdbb96);
+box(-30,0.04,0,9,0.1,98,0x419da8);
+
+function house(x,z,w=7,h=4){
+box(x,h/2,z,w,h,6,0xe8c9a0);
+box(x,1.4,z+3.05,1.4,2.8,0.1,0x743b35);
+const roof=mesh(new T.ConeGeometry(w*0.83,2.4,4),0x8b3538,x,h+1,z);
+roof.rotation.y=Math.PI/4;
+for(const i of [-1,1]){
+box(x+i*w*0.4,1.7,z+3.2,0.25,3.4,0.25,0x913c35);
+ball(x+i*w*0.4,3.1,z+3.5,0.38,0xe95736);
+}
+}
+
+house(0,-34,18,8);
+house(-12,-24);
+house(12,-24);
+
+for(let z=-13;z<=17;z+=10){
+house(-12,z);
+house(12,z);
+}
+
+for(const x of [-5,5]){
+box(x,3,-18,0.65,6,0.65,0xa13b32);
+ball(x,5.5,-18,0.65,0xffa235);
+}
+box(0,6,-18,12,0.7,1,0x9a3335);
+
+for(let i=0;i<75;i++){
+const x=(Math.random()-0.5)*90;
+const z=(Math.random()-0.5)*90;
+if(Math.abs(x)<19||Math.abs(x+30)<6)continue;
+box(x,1.5,z,0.35,3,0.35,0x73523b);
+for(let j=0;j<4;j++){
+ball(x+(Math.random()-0.5)*2,3+Math.random()*2,z+(Math.random()-0.5)*2,1.2,i%3?0xeda5b7:0x427a50);
+}
+}
+
+const petals=[];
+for(let i=0;i<100;i++){
+petals.push(ball((Math.random()-0.5)*70,Math.random()*12,(Math.random()-0.5)*70,0.055,0xffc0d0));
+}
+
+function person(x,z,color,monkey=false){
+const g=new T.Group();
+scene.add(g);
+g.position.set(x,0,z);
+mesh(new T.CylinderGeometry(0.27,0.46,0.85,8),color,0,0.95,0,g);
+ball(0,1.65,0,0.3,monkey?0xd6a36a:0xffd2ad,g);
+ball(0,1.86,-0.05,0.29,0x33262a,g);
+g.userData.legs=[
+box(-0.16,0.32,0,0.23,0.64,0.25,0x594238,g),
+box(0.16,0.32,0,0.23,0.64,0.25,0x594238,g)
+];
+if(monkey){
+box(0.47,1.05,0,0.09,2.3,0.09,0xe8b54b,g);
+box(0,1.76,0.25,0.5,0.08,0.1,0xffc449,g);
+}
+return g;
+}
+
+const player=person(0,35,0xe4a52f,true);
+const queen=person(0,-27,0xa92b68);
+const monk=person(3,24,0xd85d38);
+
+const villagers=[];
+for(let i=0;i<14;i++){
+const x=(Math.random()-0.5)*14;
+const z=(Math.random()-0.5)*44;
+villagers.push({
+g:person(x,z,[0x668cba,0xd98da7,0x6eaa88][i%3]),
+x,z,t:Math.random()*6
+});
+}
+
+const herbs=[];
+for(let i=0;i<5;i++){
+const g=new T.Group();
+scene.add(g);
+g.position.set(-20,0,-12+i*8);
+ball(0,0.5,0,0.25,0xffd34d,g);
+for(let j=0;j<3;j++){
+ball((j-1)*0.22,0.25,0,0.2,0x4fae55,g);
+}
+herbs.push(g);
+}
+
+const boss=new T.Group();
+scene.add(boss);
+boss.position.set(27,0,-26);
+ball(0,0.75,0,0.85,0x71354e,boss);
+for(const i of [-1,1]){
+for(let j=0;j<4;j++){
+box(i*0.95,0.4,(j-1.5)*0.4,1.1,0.15,0.17,0x583047,boss);
+}
+ball(i*1.1,0.7,0.85,0.4,0x913f50,boss);
+}
+for(let i=0;i<5;i++){
+ball(0,0.9+i*0.25,-0.7-i*0.12,0.25,0x71354e,boss);
+}
+
+let hp=100,bhp=100,got=0,stage=0;
+let air=false,dark=false,yaw=0,keys={},last=0,flash=0;
+const $=s=>document.querySelector(s);
+
+function dist(g){
+return Math.hypot(player.position.x-g.position.x,player.position.z-g.position.z);
+}
+
+function say(t){
+$('#message').textContent=t;
+}
+
+function update(){
+$('#stats').textContent=`Sinh lực: ${Math.ceil(hp)} | Linh thảo: ${got}/5 | Trùm: ${bhp}%`;
+$('#quest').textContent=[
+'Gặp Đường Tăng ở phía trước',
+'Tìm 5 linh thảo phía tây thành',
+'Gặp Quốc vương trước cung điện phía bắc',
+'Đánh Bọ Cạp Tinh ở đông bắc',
+'Trở về gặp Quốc vương',
+'Hoàn thành chương Nữ Nhi Quốc!'
+][stage];
+}
+
+function interact(){
+if(stage===0&&dist(monk)<5){
+stage=1;
+say('Đường Tăng: Hãy tìm năm linh thảo để giải độc nước sông Tử Mẫu.');
+}else if(stage===2&&dist(queen)<6){
+stage=3;
+say('Quốc vương: Xin đại thánh tiêu diệt Bọ Cạp Tinh!');
+}else if(stage===4&&dist(queen)<6){
+stage=5;
+say('Quốc vương: Đa tạ đại thánh! Nữ Nhi Quốc đã bình an.');
+}else{
+const h=herbs.find(g=>g.visible&&dist(g)<3);
+if(h&&stage===1){
+h.visible=false;
+got++;
+if(got===5)stage=2;
+say('Đã thu thập linh thảo '+got+'/5');
+}else{
+say('Hãy đến gần mục tiêu nhiệm vụ.');
+}
+}
+update();
+}
+
+function attack(){
+if(performance.now()-last<350)return;
+last=performance.now();
+flash=0.25;
+if(stage===3&&dist(boss)<5){
+bhp=Math.max(0,bhp-10);
+if(bhp===0){
+boss.visible=false;
+stage=4;
+say('Đã đánh bại Bọ Cạp Tinh!');
+}
+}
+update();
+}
+
+$('#talk').onclick=interact;
+$('#attack').onclick=attack;
+$('#fly').onclick=()=>air=!air;
+$('#night').onclick=()=>{
+dark=!dark;
+scene.background.set(dark?0x172443:0x9ccbd8);
+scene.fog.color.copy(scene.background);
+light.intensity=dark?0.8:2.2;
+sun.intensity=dark?0.3:2.5;
+};
+
+addEventListener('keydown',e=>{
+const k=e.key.toLowerCase();
+keys[k]=true;
+if(k==='e')interact();
+if(k===' '){e.preventDefault();attack();}
+});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+addEventListener('blur',()=>keys={});
+
+document.querySelectorAll('[data-key]').forEach(b=>{
+b.onpointerdown=e=>{
+b.setPointerCapture(e.pointerId);
+keys[b.dataset.key]=true;
+};
+b.onpointerup=b.onpointercancel=()=>keys[b.dataset.key]=false;
+});
+
+let drag=false,px=0;
+renderer.domElement.onpointerdown=e=>{
+drag=true;
+px=e.clientX;
+renderer.domElement.setPointerCapture(e.pointerId);
+};
+renderer.domElement.onpointermove=e=>{
+if(drag){
+yaw-=(e.clientX-px)*0.008;
+px=e.clientX;
+}
+};
+renderer.domElement.onpointerup=renderer.domElement.onpointercancel=()=>drag=false;
+
+const clock=new T.Clock();
+let time=0;
+update();
+say('Chào mừng đại thánh!');
+
+function frame(){
+requestAnimationFrame(frame);
+const dt=Math.min(clock.getDelta(),0.05);
+time+=dt;
+
+const f=Number(!!(keys.w||keys.arrowup))-Number(!!(keys.s||keys.arrowdown));
+const r=Number(!!(keys.d||keys.arrowright))-Number(!!(keys.a||keys.arrowleft));
+const dx=r*Math.cos(yaw)-f*Math.sin(yaw);
+const dz=-f*Math.cos(yaw)-r*Math.sin(yaw);
+
+if(f||r){
+const n=Math.hypot(dx,dz);
+player.position.x=T.MathUtils.clamp(player.position.x+dx/n*dt*(air?12:7),-46,46);
+player.position.z=T.MathUtils.clamp(player.position.z+dz/n*dt*(air?12:7),-46,46);
+player.rotation.y=Math.atan2(dx,dz);
+player.userData.legs.forEach((l,i)=>l.rotation.x=Math.sin(time*12+i*Math.PI)*0.55);
+}
+
+player.position.y=T.MathUtils.lerp(player.position.y,air?3:0,dt*5);
+
+for(const v of villagers){
+v.g.position.x=v.x+Math.sin(time*0.3+v.t)*2;
+v.g.position.z=v.z+Math.cos(time*0.3+v.t)*3;
+v.g.rotation.y=time*0.3+v.t;
+v.g.userData.legs.forEach((l,i)=>l.rotation.x=Math.sin(time*5+i*Math.PI)*0.3);
+}
+
+for(const p of petals){
+p.position.y-=dt*0.6;
+p.position.x+=dt*0.3;
+if(p.position.y<0)p.position.y=10;
+if(p.position.x>40)p.position.x=-40;
+}
+
+if(stage===3&&dist(boss)<8){
+const a=player.position.clone().sub(boss.position);
+a.y=0;
+if(a.length()>1.7){
+boss.position.addScaledVector(a.normalize(),dt*2);
+}else if(!air){
+hp-=dt*7;
+if(hp<=0){
+hp=100;
+player.position.set(0,0,30);
+bhp=100;
+say('Đại thánh đã hồi sinh.');
+}
+}
+update();
+}
+
+flash=Math.max(0,flash-dt);
+player.scale.setScalar(1+flash*0.5);
+camera.position.set(
+player.position.x+Math.sin(yaw)*9,
+player.position.y+5.5,
+player.position.z+Math.cos(yaw)*9
+);
+camera.lookAt(player.position.x,player.position.y+1.2,player.position.z);
+renderer.render(scene,camera);
+}
+
+frame();
+
+addEventListener('resize',()=>{
+camera.aspect=innerWidth/innerHeight;
+camera.updateProjectionMatrix();
+renderer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>
