@@ -349,6 +349,33 @@ camera.aspect=innerWidth/innerHeight;
 camera.updateProjectionMatrix();
 renderer.setSize(innerWidth,innerHeight);
 });
+</scripte>
+  <!-- NỮ NHI QUỐC 3D - AUDIO V2 -->
+<script>
+(()=>{
+let ctx,master,enabled=true,beat=0,lastStep=0,walking=new Set(),timer,volume=.65, flying=false;
+const panel=document.createElement('div');panel.style.cssText='position:fixed;top:12px;right:10px;z-index:999;background:#18332eee;padding:7px;border-radius:9px;color:white;font:12px Arial;max-width:115px';
+panel.innerHTML='<button id="audioToggle" style="padding:6px">🔊 Bật tiếng</button><input id="audioVolume" aria-label="Âm lượng" type="range" min="0" max="100" value="65" style="width:100px;display:block">';document.body.append(panel);
+const toggle=panel.querySelector('button');
+function unlock(){if(!enabled)return;try{if(!ctx){ctx=new (window.AudioContext||window.webkitAudioContext)();master=ctx.createGain();master.gain.value=volume;master.connect(ctx.destination);timer=setInterval(tick,420);}if(ctx.state==='suspended')ctx.resume().catch(()=>{});toggle.textContent='🔊 Tắt tiếng';}catch(e){toggle.textContent='Không hỗ trợ âm thanh';}}
+function tone(f,d=.2,v=.1,type='sine',end=f,delay=0){if(!ctx||!enabled||ctx.state!=='running')return;let t=ctx.currentTime+delay,o=ctx.createOscillator(),g=ctx.createGain();o.type=type;o.frequency.setValueAtTime(f,t);o.frequency.exponentialRampToValueAtTime(Math.max(20,end),t+d);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v,t+.025);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(master);o.start(t);o.stop(t+d+.01);}
+function noise(d=.15,v=.1,f=800){if(!ctx||!enabled||ctx.state!=='running')return;let t=ctx.currentTime,b=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*d),ctx.sampleRate),a=b.getChannelData(0);for(let i=0;i<a.length;i++)a[i]=(Math.random()*2-1)*(1-i/a.length);let s=ctx.createBufferSource(),g=ctx.createGain(),filter=ctx.createBiquadFilter();s.buffer=b;filter.type='lowpass';filter.frequency.value=f;g.gain.value=v;s.connect(filter);filter.connect(g);g.connect(master);s.start(t);}
+const melody=[293.66,349.23,392,440,523.25,440,392,349.23,293.66,0,349.23,392,440,392,293.66,0];
+function tick(){if(document.hidden||!enabled)return;let n=melody[beat%melody.length];if(n){tone(n,.65,.075,'triangle');tone(n*2,.3,.018);}if(beat%4===0)tone(146.83,.95,.045);if(beat%8===3){noise(.7,.035,450);tone(1350,.12,.025,'sine',1800);tone(1500,.14,.02,'sine',1100,.16);}beat++;}
+function reward(){[392,523.25,659.25,783.99].forEach((n,i)=>tone(n,.35,.1,'triangle',n,i*.12));}
+function hit(){noise(.22,.24,1800);tone(230,.18,.13,'triangle',65);}
+function speak(t){if(!enabled||!window.speechSynthesis)return;let u=new SpeechSynthesisUtterance(t);u.lang='vi-VN';let v=speechSynthesis.getVoices().find(v=>v.lang.toLowerCase().startsWith('vi'));if(v)u.voice=v;u.rate=.92;u.volume=volume;speechSynthesis.cancel();speechSynthesis.speak(u);}
+toggle.onclick=()=>{if(!ctx){enabled=true;unlock();return;}enabled=!enabled;master.gain.value=enabled?volume:0;toggle.textContent=enabled?'🔊 Tắt tiếng':'🔇 Bật tiếng';if(!enabled&&window.speechSynthesis)speechSynthesis.cancel();if(enabled)unlock();};
+panel.querySelector('input').oninput=e=>{volume=Number(e.target.value)/100;if(master)master.gain.value=enabled?volume:0;};
+document.addEventListener('pointerdown',e=>{if(!panel.contains(e.target))unlock();},true);
+const moveKeys=['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'];
+window.addEventListener('keydown',e=>{unlock();let k=e.key.toLowerCase();if(moveKeys.includes(k))walking.add(k);if(k===' '&&!e.repeat)hit();});window.addEventListener('keyup',e=>walking.delete(e.key.toLowerCase()));
+document.querySelectorAll('[data-key]').forEach(b=>{b.addEventListener('pointerdown',()=>walking.add(b.dataset.key));['pointerup','pointercancel','lostpointercapture'].forEach(evt=>b.addEventListener(evt,()=>walking.delete(b.dataset.key)));});window.addEventListener('blur',()=>walking.clear());
+setInterval(()=>{if(walking.size&&!document.hidden){if(flying)noise(.3,.065,600);else{noise(.12,.17,500);tone(85,.1,.06,'sine',45);}}},350);
+for(const id of ['talk','attack','fly','night']){document.getElementById(id)?.addEventListener('click',()=>{unlock();if(id==='attack')hit();else if(id==='fly'){flying=!flying;noise(.5,.13,1100);tone(180,.45,.08,'sine',550);}else tone(550,.12,.06);});}
+let msg=document.getElementById('message'),previous=msg?.textContent;
+if(msg)new MutationObserver(()=>{let t=msg.textContent;if(t===previous)return;previous=t;if(/thu thập|đánh bại|bình an/i.test(t))reward();if(/Đường Tăng:|Quốc vương:|hồi sinh/i.test(t))speak(t);}).observe(msg,{childList:true,characterData:true,subtree:true});
+})();
 </script>
 </body>
 </html>
